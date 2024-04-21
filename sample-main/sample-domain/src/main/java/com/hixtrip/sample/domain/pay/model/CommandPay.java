@@ -21,4 +21,13 @@ public class CommandPay {
      * 订单状态
      */
     private String payStatus;
+
+
+    public boolean paySuccess(){
+        if ("1".equals(payStatus)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }

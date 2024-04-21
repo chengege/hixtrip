@@ -1,8 +1,12 @@
 package com.hixtrip.sample.domain.order;
 
 import com.hixtrip.sample.domain.order.model.Order;
+import com.hixtrip.sample.domain.order.repository.OrderRepository;
 import com.hixtrip.sample.domain.pay.model.CommandPay;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
 
 /**
  * 订单领域服务
@@ -11,28 +15,54 @@ import org.springframework.stereotype.Component;
 @Component
 public class OrderDomainService {
 
+    @Autowired
+    private OrderRepository orderRepository;
 
     /**
      * todo 需要实现
      * 创建待付款订单
+     *
+     * @return
      */
     public void createOrder(Order order) {
         //需要你在infra实现, 自行定义出入参
+        orderRepository.insert(order);
     }
 
     /**
      * todo 需要实现
      * 待付款订单支付成功
      */
-    public void orderPaySuccess(CommandPay commandPay) {
+    public void orderPaySuccess(CommandPay commandPay) throws RuntimeException {
         //需要你在infra实现, 自行定义出入参
+        Order order = orderRepository.findById(commandPay.getOrderId());
+        if(order.isPaid()){
+            throw new RuntimeException("重复支付");
+        }
+
+        order.setPayTime(LocalDateTime.now());
+        order.setPayStatus(commandPay.getPayStatus());
+        order.setUpdateBy("");
+        orderRepository.updatePayStatus(order);
     }
 
     /**
      * todo 需要实现
      * 待付款订单支付失败
      */
-    public void orderPayFail(CommandPay commandPay) {
+    public void orderPayFail(CommandPay commandPay) throws RuntimeException {
         //需要你在infra实现, 自行定义出入参
+
+        Order order = orderRepository.findById(commandPay.getOrderId());
+        // 可以先做其他判断，不一定需要立即更新，如可超时后再更新等
+        if(order.isPaid()){
+            throw new RuntimeException("已支付");
+        }
+
+        order.setPayTime(LocalDateTime.now());
+        order.setPayStatus(commandPay.getPayStatus());
+        order.setUpdateBy("");
+        orderRepository.updatePayStatus(order);
+
     }
 }

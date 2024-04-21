@@ -1,0 +1,69 @@
+整体方案描述
+1、冷热数据分离，热数据存储在mysql中，冷数据存储在ES中，热数据为近半年数据（1.8亿）
+2、热数据 分表存储，分片键可以使用user_id或user_id与order_id组合分片（取决于用户订单数据是否均匀），分成16个表
+3、订单数据分析排行榜使用hbase实现
+
+ES mapping：
+PUT /orders_index
+{
+  "mappings": {
+    "properties": {
+      "order_id": {
+        "type": "long"
+      },
+      "user_id": {
+        "type": "long"
+      },
+      "seller_id": {
+        "type": "long"
+      },
+      "status": {
+        "type": "short"
+      },
+      "order_number": {
+        "type": "text",
+        "index": true
+      },
+      "user_name": {
+        "type": "text",
+        "index": true
+      },
+      "create_time": {
+        "type": "date",
+        "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis",
+      }
+    }
+  }
+}
+
+
+
+mysql：
+CREATE TABLE order_0~15 ( # 总共16个表
+    id INT PRIMARY KEY,
+    user_id INT,
+    seller_id INT,
+    status TINYINT,
+    order_number VARCHAR(20),
+    user_name VARCHAR(50),
+    create_time DATETIME,
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_seller_id` (`seller_id`)
+);
+
+habse：
+CREATE TABLE order_user_ranking (
+    user_id VARCHAR,
+    order_id VARCHAR,
+    order_amount DOUBLE,
+    timestamp TIMESTAMP,
+    PRIMARY KEY (user_id, order_id)
+) WITH COMPACTION = '{ "class" : "LeveledCompactionStrategy" }';
+
+CREATE TABLE order_user_ranking (
+    seller_id VARCHAR,
+    order_id VARCHAR,
+    order_amount DOUBLE,
+    timestamp TIMESTAMP,
+    PRIMARY KEY (seller_id, order_id)
+) WITH COMPACTION = '{ "class" : "LeveledCompactionStrategy" }';
